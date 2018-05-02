@@ -12,4 +12,4 @@ fi
 #./ipfs config Addresses.Gateway /ip4/127.0.0.1/tcp/8081  # instead of 8080
 #./ipfs config Addresses.API /ip4/127.0.0.1/tcp/5002      # instead of 5001, you'll need to use --ipfs-api-address /ip4/
 
-./ipfs daemon --init
+./ipfs daemon --enable-namesys-pubsub --init
