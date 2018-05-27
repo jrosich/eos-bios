@@ -14,37 +14,40 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
+	"log"
 
-	bios "github.com/eoscanada/eos-bios"
+	"github.com/eoscanada/eos-bios/bios"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // discoverCmd represents the discovery command
 var discoverCmd = &cobra.Command{
 	Use:   "discover",
-	Short: "Discover and update info about all peers in the network, based on an initial discovery URL",
-	Long:  `This uses the "network.seed_discovery_url" key in your configuration to start discovery.`,
+	Short: "Discover fetches the network you are participating in on the `eosio.disco` contract.  It does not show networks you are not participating in. Use `list` for that.",
 	Run: func(cmd *cobra.Command, args []string) {
-		ipfs, err := bios.NewIPFS(ipfsGatewayAddress, ipfsLocalGatewayAddress)
+		net, err := fetchNetwork(false, false)
 		if err != nil {
-			fmt.Println("ipfs client error:", err)
-			os.Exit(1)
+			log.Fatalln("fetch network:", err)
 		}
 
-		net, err := fetchNetwork(ipfs)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+		if elect := viper.GetString("elect"); elect != "" {
+			net.CalculateNetworkWeights(elect)
 		}
-
-		fmt.Println("Fetched successfully")
 
 		net.PrintOrderedPeers()
+
+		if viper.GetBool("serve") {
+			bios.Serve(net)
+		}
 	},
 }
 
 func init() {
 	RootCmd.AddCommand(discoverCmd)
+	discoverCmd.Flags().BoolP("serve", "", false, "Serve the discovery visualization on http://localhost:10101")
+
+	if err := viper.BindPFlag("serve", discoverCmd.Flags().Lookup("serve")); err != nil {
+		panic(err)
+	}
 }

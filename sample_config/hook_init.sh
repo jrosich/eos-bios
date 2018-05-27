@@ -1,10 +1,9 @@
-#!/bin/bash
+#!/bin/bash -e
 
 # `init` hook
-# no parameters
+# $1 = operation (either `join`, `boot` or `orchestrate`)
 
-echo "Doing any preparation before go-live"
+echo "Starting $1 operation"
 
-docker kill nodeos-bios
-
-true
+docker kill nodeos-bios || true
+docker rm nodeos-bios || true

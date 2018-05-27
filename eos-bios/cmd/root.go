@@ -17,7 +17,9 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 
+	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -27,14 +29,10 @@ var Version string
 
 // Flags
 var noDiscovery bool
-var cachePath string
-var myDiscoveryFile string
-var secretP2PAddress string
 var apiAddress string
 var apiAddressURL *url.URL
 var ipfsAPIAddress string
-var ipfsGatewayAddress string
-var ipfsLocalGatewayAddress string
+var seedNetworkContract = "eosio.disco"
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
@@ -56,15 +54,26 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	RootCmd.PersistentFlags().BoolVarP(&noDiscovery, "no-discovery", "", false, "Don't traverse the discovery graph, but use the cached version instead (will still traverse if the cache is incomplete)")
-	RootCmd.PersistentFlags().StringVarP(&myDiscoveryFile, "my-discovery", "", "my_discovery_file.yaml", "path to your local discovery file")
-	RootCmd.PersistentFlags().StringVarP(&ipfsGatewayAddress, "ipfs-gateway-address", "", "https://ipfs.io", "Address to reach an IPFS gateway. Used as a fallback if ipfs-local-gateway-address is unreachable.")
-	RootCmd.PersistentFlags().StringVarP(&ipfsLocalGatewayAddress, "ipfs-local-gateway-address", "", "http://127.0.0.1:8080", "Address to reach an IPFS gateway. Used as a fallback if ipfs-local-gateway-address is unreachable.")
+	homedir, err := homedir.Dir()
+	if err != nil {
+		fmt.Println("couldn't find home dir:", err)
+		os.Exit(1)
+	}
 
-	RootCmd.PersistentFlags().StringVarP(&cachePath, "cache-path", "", ".eos-bios-cache", "directory to store cached data from discovered network")
+	RootCmd.PersistentFlags().StringP("my-discovery", "", "my_discovery_file.yaml", "path to your local discovery file")
+	RootCmd.PersistentFlags().StringP("ipfs", "", "https://ipfs.io", "Address to reach an IPFS gateway. There are a few fallbacks anyway.")
+	RootCmd.PersistentFlags().StringP("seednet-api", "", "", "HTTP address of the seed network pointed to by your discovery file")
+	RootCmd.PersistentFlags().StringP("seednet-keys", "", "./seed_network.keys", "File containing private keys to your account on the seed network")
+	RootCmd.PersistentFlags().StringP("target-api", "", "", "HTTP address to reach the node you are starting (for injection and validation)")
 
-	for _, flag := range []string{"no-discovery", "cache-path", "my-discovery", "ipfs-api-address", "ipfs-gateway-address"} {
-		viper.BindPFlag(flag, RootCmd.Flags().Lookup(flag))
+	RootCmd.PersistentFlags().StringP("cache-path", "", filepath.Join(homedir, ".eos-bios-cache"), "directory to store cached data from discovered network")
+	RootCmd.PersistentFlags().BoolP("verbose", "v", false, "Display verbose output (also see 'output.log')")
+	RootCmd.PersistentFlags().String("elect", "", "Force the election of the given BIOS Boot node")
+
+	for _, flag := range []string{"cache-path", "my-discovery", "ipfs", "seednet-keys", "seednet-api", "target-api", "verbose", "elect"} {
+		if err := viper.BindPFlag(flag, RootCmd.PersistentFlags().Lookup(flag)); err != nil {
+			panic(err)
+		}
 	}
 }
 

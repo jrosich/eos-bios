@@ -3,21 +3,52 @@
 package cmd
 
 import (
+	"fmt"
+	"log"
+	"os"
+	"time"
+
+	humanize "github.com/dustin/go-humanize"
+	"github.com/eoscanada/eos-bios/bios/disco"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var publishCmd = &cobra.Command{
 	Use:   "publish",
-	Short: "Publish some content to IPFS for others to discover.",
+	Short: "Publish my discovery file to the seed network",
 	Long:  ``,
+	Run: func(cmd *cobra.Command, args []string) {
+		net, err := fetchNetwork(false, false)
+		if err != nil {
+			log.Fatalln("fetch network:", err)
+		}
+
+		launchTime, currentBlock, err := net.LaunchBlockTime(uint32(net.MyPeer.Discovery.SeedNetworkLaunchBlock))
+		if err != nil {
+			fmt.Println("get last block num failed: ", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Target block: %d (current: %d)\n", net.MyPeer.Discovery.SeedNetworkLaunchBlock, currentBlock)
+		past := ""
+		if launchTime.Before(time.Now()) {
+			past = " - past!"
+		}
+
+		fmt.Printf("- Target time: %s (%s%s)\n", humanize.Time(launchTime), launchTime.Format(time.RFC1123Z), past)
+
+		_, err = net.SeedNetAPI.SignPushActions(
+			disco.NewUpdateDiscovery(net.MyPeer.Discovery.SeedNetworkAccountName, net.MyPeer.Discovery),
+		)
+
+		if err != nil {
+			fmt.Println("error:", err)
+			os.Exit(1)
+		}
+
+		fmt.Println("Done.")
+	},
 }
 
 func init() {
 	RootCmd.AddCommand(publishCmd)
-	publishCmd.PersistentFlags().StringVarP(&ipfsAPIAddress, "ipfs-api-address", "", "/ip4/127.0.0.1/tcp/5001", "API Endpoint of the local IPFS node, to publish content. Make sure it matches your running `ipfs` instance.")
-
-	for _, flag := range []string{"ipfs-api-address"} {
-		viper.BindPFlag(flag, publishCmd.Flags().Lookup(flag))
-	}
 }

@@ -1,0 +1,210 @@
+boot_sequence:
+- op: system.setcode
+  label: Setting eosio.bios code for account eosio
+  data:
+    account: eosio
+    contract_name_ref: eosio.bios
+
+- op: producers.create_accounts
+  label: Creating initial Block Producers accounts
+
+- op: system.newaccount
+  label: Create account b1 (to match `validate_b1_vesting` in system contract)
+  data:
+    creator: eosio
+    new_account: b1
+    pubkey: EOS5cujNHGMYZZ2tgByyNEUaoPLFhZVmGXbZc9BLJeQkKZFqGYEiQ  # From the snapshot.csv file.
+
+- op: system.newaccount
+  label: Create account eosio.msig (on-chain multi-signature helper)
+  data:
+    creator: eosio
+    new_account: eosio.msig
+    pubkey: ephemeral
+
+- op: system.newaccount
+  label: Create account eosio.token (main multi-currency contract, including EOS)
+  data:
+    creator: eosio
+    new_account: eosio.token
+    pubkey: ephemeral
+
+- op: system.newaccount
+  label: Create account eosio.ram (where buyram proceeds go)
+  data:
+    creator: eosio
+    new_account: eosio.ram
+    pubkey: ephemeral
+
+- op: system.newaccount
+  label: Create account eosio.ramfee (where buyram fees go)
+  data:
+    creator: eosio
+    new_account: eosio.ramfee
+    pubkey: ephemeral
+
+- op: system.newaccount
+  label: Create account eosio.names (where bidname revenues go)
+  data:
+    creator: eosio
+    new_account: eosio.names
+    pubkey: ephemeral
+
+- op: system.newaccount
+  label: Create account eosio.stake (where delegated stakes go)
+  data:
+    creator: eosio
+    new_account: eosio.stake
+    pubkey: ephemeral
+
+- op: system.newaccount
+  label: Create account eosio.saving (unallocated inflation)
+  data:
+    creator: eosio
+    new_account: eosio.saving
+    pubkey: ephemeral
+
+- op: system.newaccount
+  label: Create account eosio.bpay (fund per-block bucket)
+  data:
+    creator: eosio
+    new_account: eosio.bpay
+    pubkey: ephemeral
+
+- op: system.newaccount
+  label: Create account eosio.vpay (fund per-vote bucket)
+  data:
+    creator: eosio
+    new_account: eosio.vpay
+    pubkey: ephemeral
+
+- op: system.newaccount
+  label: Create account eosio.disco (for eos-bios launch consensus)
+  data:
+    creator: eosio
+    new_account: eosio.disco
+    pubkey: ephemeral
+
+- op: system.newaccount
+  label: Create account eosio.unregd (to eventually honor unregistered crowdsale accounts)
+  data:
+    creator: eosio
+    new_account: eosio.unregd
+    pubkey: ephemeral
+
+- op: system.setpriv
+  label: Setting privileged account for eosio.msig
+  data:
+    account: eosio.msig
+
+- op: system.setcode
+  label: Setting eosio.msig code for account eosio.msig
+  data:
+    account: eosio.msig
+    contract_name_ref: eosio.msig
+
+- op: system.setcode
+  label: Setting eosio.token code for account eosio.token
+  data:
+    account: eosio.token
+    contract_name_ref: eosio.token
+
+- op: system.setcode
+  label: Setting eosio.disco code for account eosio.disco
+  data:
+    account: eosio.disco
+    contract_name_ref: eosio.disco
+
+- op: system.setcode
+  label: Setting eosio.unregd code for account eosio.unregd
+  data:
+    account: eosio.unregd
+    contract_name_ref: eosio.unregd
+
+- op: token.create
+  label: Creating the EOS currency symbol
+  data:
+    account: eosio
+    amount: 10000000000.0000 EOS  # Should work with 5% inflation, for the next 50 years (end of uint32 block_num anyway)
+    can_whitelist: false
+    can_freeze: false
+    can_recall: false
+
+- op: token.issue
+  label: Issuing initial EOS monetary base
+  data:
+    account: eosio
+    amount: 1000000000.0000 EOS  # 1B coins, as per distribution model.
+    memo: "Initial issuance"
+
+- op: system.setcode
+  label: Replacing eosio account from eosio.bios contract to eosio.system
+  data:
+    account: eosio
+    contract_name_ref: eosio.system
+
+- op: producers.stake
+  label: Stake initial producers and buy them some RAM
+
+- op: producers.enrich
+  label: Enrich producers, to help with next stage. Disabled on mainnet.
+  data:
+    TESTNET_ENRICH_PRODUCERS: true
+
+
+- op: token.issue
+  label: Issuing more and more EOS, because initial account creation and RAM buying for the snapshot holders is REALLY PRICEY! This has to be solved otherwise.
+  data:
+    account: eosio
+    amount: 1000000000.0000 EOS  # Another 1B.. we'll see how far this goes.
+    memo: "Second issuance to pay for accounts and RAM."
+
+- op: snapshot.create_accounts
+  label: Creating accounts for ERC-20 holders
+  data:
+    buy_ram_bytes: 8192
+    TESTNET_TRUNCATE_SNAPSHOT: 1000
+
+- op: snapshot.transfer
+  label: Injecting ERC-20 snapshot balances
+  data:
+    TESTNET_TRUNCATE_SNAPSHOT: 1000
+
+- op: snapshot.load_unregistered
+  label: Saving unregistered addresses in eosio.unregd account, for the future.
+  data:
+    TESTNET_TRUNCATE_SNAPSHOT: 1000
+
+
+- op: system.setcode
+  label: Setting eosio.bios code for account eosio
+  data:
+    account: eosio
+    contract_name_ref: eosio.bios
+
+- op: system.setprods
+  label: Setup appointed block producers
+
+- op: system.setcode
+  label: Replacing eosio account from eosio.bios contract to eosio.system
+  data:
+    account: eosio
+    contract_name_ref: eosio.system
+
+- op: system.resign_accounts
+  label: Disabling authorization for system accounts, pointing `eosio` to the `eosio.prods` account.
+  data:
+    accounts:
+    - eosio.msig
+    - eosio.token
+
+    - eosio.ram
+    - eosio.ramfee
+    - eosio.stake
+    - eosio.names
+    - eosio.saving
+    - eosio.bpay
+    - eosio.vpay
+
+    - eosio.disco
+    - eosio.unregd
